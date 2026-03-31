@@ -1,22 +1,34 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <title>Scattergories Game</title>
+</head>
 <body>
   <h1>Scattergories Game</h1>
-  <div id="questions">
-    <p>1. Name a pet</p>
-    <p>2. Curling term</p>
-    <p>3. Foodie joke</p>
-    <p>4. Toastmasters theme</p>
-    <p>5. Winter sport</p>
-    <p>6. Pet reunion story</p>
-    <p>7. Funny marriage quote</p>
-    <p>8. Food truck idea</p>
-    <p>9. Random word challenge</p>
-  </div>
-  <div id="memes">
-    <img src="https:                                     
-    <img src="https://i.imgur.com/8FLhg.jpg" width="200">
-    <img src="https://i.imgur.com/4t8wA.jpg" width="200">
-  </div>
+  <div id="questions"></div>
+  <div id="memes"></div>
+  <script>
+    // Fetch questions
+    fetch('questions.txt')
+      .then(r => r.text())
+      .then(txt => {
+        const questions = txt.split('\n').filter(q => q.trim());
+        const selected = [];
+        for (let i = 0; i < 9; i++) {
+          selected.push(questions[Math.floor(Math.random() * questions.length)]);
+        }
+        document.getElementById('questions').innerHTML = selected.map((q, i) => `<p>${i+1}. ${q}</p>`).join('');
+      });
+
+    // Fetch 3 memes
+    const memePromises = Array(3).fill().map(() =>
+      fetch('https:                                          
+    );
+    Promise.all(memePromises)
+      .then(memes => {
+        const memeHTML = memes.map(m => `<img src="${m.url}" width="200" onerror="this.src='https://via.placeholder.com/200'"><p>${m.title}</p>`).join('');
+        document.getElementById('memes').innerHTML = memeHTML;
+      });
+  </script>
 </body>
 </html>
