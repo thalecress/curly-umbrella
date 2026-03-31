@@ -5,31 +5,8 @@
 </head>
 <body>
   <h1>Scattergories Game</h1>
-  <div id="questions"></div>
-  <div id="memes"></div>
-  <script>
-    // Fetch questions
-    fetch('questions.txt')
-      .then(r => r.text())
-      .then(txt => {
-        const questions = txt.split('\n').filter(q => q.trim());
-        const selected = [];
-        for (let i = 0; i < 9; i++) {
-          selected.push(questions[Math.floor(Math.random() * questions.length)]);
-        }
-        document.getElementById('questions').innerHTML = selected.map((q, i) => `<p>${i+1}. ${q}</p>`).join('');
-      });
-
-    // Fetch 3 memes
-    const memePromises = Array(3).fill().map(() =>
-      fetch('https:                                          
-    );
-    Promise.all(memePromises)
-      .then(memes => {
-        const memeHTML = memes.map(m => `<img src="${m.url}" width="200"><p>${m.title}</p>`).join('');
-        document.getElementById('memes').innerHTML = memeHTML;
-      });
-  </script>
+  <p> H </p>
+  <p> J </p>
 </body>
 </html>
 
