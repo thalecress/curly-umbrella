@@ -238,7 +238,7 @@ Species of Trees
 Cheesiest Pickup Lines
 Musical Instruments
 Islands
-Risqué clothing items
+Seductive clothing items
 Flirty comebacks
 Retro video games
 Type of bird
@@ -248,4 +248,3 @@ Holidays
 Things to Do on a date
 Outlaw/Gangster/Serial killer
 Your face is
-Save this in a file named `questions.txt` (with tabs between questions), and you're good to go! 😄
