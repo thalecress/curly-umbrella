@@ -2,32 +2,67 @@
 <html>
 <head>
   <title>Scattergories Game</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { text-align: center; }
+    #questions p { font-size: 1.1em; margin: 6px 0; }
+    #memes { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 30px; }
+    #memes div { text-align: center; max-width: 200px; }
+    #memes img { width: 200px; border-radius: 8px; }
+    #memes p { font-size: 0.85em; color: #555; }
+    button { display: block; margin: 20px auto; padding: 10px 24px; font-size: 1em; cursor: pointer; }
+    .error { color: red; }
+  </style>
 </head>
 <body>
-  <h1>Scattergories Game</h1>
+  <h1>🎲 Scattergories</h1>
+  <button onclick="loadQuestions()">🔀 New Questions</button>
   <div id="questions"></div>
   <div id="memes"></div>
+
   <script>
-    // Fetch questions
+    let allQuestions = [];
+
+    function loadQuestions() {
+      if (allQuestions.length === 0) return;
+      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, 9);
+      document.getElementById('questions').innerHTML =
+        selected.map((q, i) => `<p>${i + 1}. ${q}</p>`).join('');
+    }
+
+    // Fetch questions.txt from same folder
     fetch('questions.txt')
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error('Could not load questions.txt');
+        return r.text();
+      })
       .then(txt => {
-        const questions = txt.split('\n').filter(q => q.trim());
-        const selected = [];
-        for (let i = 0; i < 9; i++) {
-          selected.push(questions[Math.floor(Math.random() * questions.length)]);
-        }
-        document.getElementById('questions').innerHTML = selected.map((q, i) => `<p>${i+1}. ${q}</p>`).join('');
+        allQuestions = txt.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+        loadQuestions();
+      })
+      .catch(err => {
+        document.getElementById('questions').innerHTML =
+          `<p class="error">Error loading questions: ${err.message}</p>`;
       });
 
     // Fetch 3 memes
     const memePromises = Array(3).fill().map(() =>
-      fetch('https:                                          
+      fetch('https://meme-api.com/gimme').then(r => r.json())
     );
+
     Promise.all(memePromises)
       .then(memes => {
-        const memeHTML = memes.map(m => `<img src="${m.url}" width="200" onerror="this.src='https://via.placeholder.com/200'"><p>${m.title}</p>`).join('');
+        const memeHTML = memes.map(m =>
+          `<div>
+            <img src="${m.url}" onerror="this.src='https://via.placeholder.com/200'">
+            <p>${m.title}</p>
+          </div>`
+        ).join('');
         document.getElementById('memes').innerHTML = memeHTML;
+      })
+      .catch(() => {
+        document.getElementById('memes').innerHTML = '';
       });
   </script>
 </body>
