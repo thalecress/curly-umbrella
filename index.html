@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scattergories Game</title>
+</head>
+<body>
+  <h1>Scattergories Game</h1>
+  <div id="questions"></div>
+  <div id="meme"></div>
+  <script>
+    // Fetch questions and meme
+    fetch('questions.txt')
+      .then(r => r.text())
+      .then(txt => {
+        const questions = txt.split('\t').filter(q => q.trim());
+        const selected = [];
+        for (let i = 0; i < 6; i++) {
+          selected.push(questions[Math.floor(Math.random() * questions.length)]);
+        }
+        document.getElementById('questions').innerHTML = selected.map((q, i) => `<p>${i+1}. ${q}</p>`).join('');
+      });
+
+    fetch('https:                      
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('meme').innerHTML = `<img src="${data.url}" width="300"><p>${data.title}</p>`;
+      });
+  </script>
+</body>
+</html>
+
