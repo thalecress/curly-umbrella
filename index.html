@@ -55,9 +55,51 @@
     .error { color: red; font-size: 1.2em; }
 
     footer { margin-top: 60px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 0.8em; color: #999; text-align: center; line-height: 1.6; }
+
+    /* --- Disclaimer overlay --- */
+    #disclaimer {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px; box-sizing: border-box;
+    }
+    #disclaimer.hidden { display: none; }
+    .disclaimer-box {
+      background: white; border-radius: 16px; padding: 36px 32px;
+      max-width: 480px; width: 100%; text-align: center;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    }
+    .disclaimer-box h2 { font-size: clamp(1.3em, 4vw, 1.8em); margin: 0 0 12px; }
+    .disclaimer-box p { font-size: clamp(0.9em, 2.5vw, 1.05em); color: #444; margin: 0 0 28px; line-height: 1.5; }
+    .mode-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .mode-btn { padding: 14px 28px; font-size: 1.1em; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; transition: transform 0.1s; }
+    .mode-btn:active { transform: scale(0.96); }
+    .btn-family { background: #4caf50; color: white; }
+    .btn-family:hover { background: #43a047; }
+    .btn-adult { background: #e53935; color: white; }
+    .btn-adult:hover { background: #c62828; }
+
+    /* --- NSFW toggle chip --- */
+    #nsfw-toggle-wrap { text-align: center; margin: 8px 0 4px; }
+    #nsfw-toggle-wrap label { font-size: 0.95em; color: #888; cursor: pointer; user-select: none; }
+    #nsfw-toggle-wrap input { cursor: pointer; }
   </style>
 </head>
 <body>
+  <!-- Disclaimer overlay -->
+  <div id="disclaimer">
+    <div class="disclaimer-box">
+      <h2>⚠️ Category Blitz</h2>
+      <p>This game contains <strong>adult humor</strong> and content intended for players <strong>18 and older</strong>.<br><br>Choose your mode:</p>
+      <div class="mode-buttons">
+        <button class="mode-btn btn-family" onclick="startGame(false)">👨‍👩‍👧 Family Mode<br><small style="font-weight:normal;font-size:0.8em">Clean questions only</small></button>
+        <button class="mode-btn btn-adult" onclick="startGame(true)">🔞 Adult Mode<br><small style="font-weight:normal;font-size:0.8em">All questions included</small></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="nsfw-toggle-wrap">
+    <label><input type="checkbox" id="nsfw-check" onchange="toggleNsfw()"> Include adult questions</label>
+  </div>
   <h1>🎲 Category Blitz</h1>
   <p class="subtitle">Meme Edition &nbsp;|&nbsp; An unofficial fan game, not affiliated with Hasbro or any other publisher</p>
 
@@ -101,6 +143,29 @@
   <script>
     const LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','R','S','T','W'];
     const NUM_FACES = ['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
+
+
+    let nsfwEnabled = false;
+
+    function startGame(adult) {
+      nsfwEnabled = adult;
+      document.getElementById('disclaimer').classList.add('hidden');
+      document.getElementById('nsfw-check').checked = adult;
+      if (allQuestions.length > 0) newRound();
+    }
+
+    function toggleNsfw() {
+      nsfwEnabled = document.getElementById('nsfw-check').checked;
+      newRound();
+    }
+
+    function getFilteredQuestions() {
+      return nsfwEnabled ? allQuestions : allQuestions.filter(q => !q.includes('[nsfw]'));
+    }
+
+    function cleanQuestion(q) {
+      return q.replace(' [nsfw]', '');
+    }
 
     let allQuestions = [], currentQuestions = [], currentMemeUrls = [];
 
@@ -160,7 +225,7 @@
         allQuestions = txt.split('\n').map(q => q.trim()).filter(q => q.length > 0);
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('round');
-        encoded ? loadFromUrl(encoded) : newRound();
+        if (encoded) { loadFromUrl(encoded); document.getElementById("disclaimer").classList.add("hidden"); } // else wait for disclaimer
       })
       .catch(err => {
         document.getElementById('questions').innerHTML = `<p class="error">Error loading questions: ${err.message}</p>`;
@@ -168,7 +233,7 @@
 
     function newRound() {
       currentMemeUrls = []; resetTimer();
-      currentQuestions = [...allQuestions].sort(() => Math.random()-0.5).slice(0, 9);
+      currentQuestions = [...getFilteredQuestions()].sort(() => Math.random()-0.5).slice(0, 9).map(cleanQuestion);
       renderQuestions(currentQuestions);
       document.getElementById('share-box').style.display = 'none';
       document.getElementById('copy-msg').textContent = '';
