@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category Blitz – Scorecard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *:before, *:after { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 4vw; }
+    h1 { text-align: center; font-size: clamp(1.4em, 5vw, 2.2em); margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #888; font-size: 0.9em; margin: 0 0 20px; }
+
+    /* --- Overlay --- */
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    #overlay.hidden { display: none; }
+    .setup-box { background: white; border-radius: 16px; padding: 32px 28px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
+    .setup-box h2 { margin: 0 0 6px; font-size: 1.6em; }
+    .setup-box .tagline { color: #888; font-size: 0.9em; margin: 0 0 20px; }
+    .setup-box label { display: block; text-align: left; font-size: 0.9em; color: #555; margin-bottom: 4px; margin-top: 12px; }
+    .setup-box input, .setup-box select { width: 100%; padding: 9px 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 8px; }
+    .seed-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+    .seed-row input { flex: 1; font-size: 1.1em; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; }
+    .seed-row button { padding: 9px 14px; font-size: 0.9em; border-radius: 8px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; white-space: nowrap; }
+    .seed-row button:hover { background: #e0e0e0; }
+    .divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 6px; color: #bbb; font-size: 0.85em; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:#eee; }
+    .mode-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .mode-btn { padding: 13px 24px; font-size: 1em; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; }
+    .btn-family { background: #4caf50; color: white; }
+    .btn-adult { background: #e53935; color: white; }
+
+    /* --- Toolbar --- */
+    .toolbar { display: flex; gap: 8px; justify-content: center; margin: 14px 0; flex-wrap: wrap; }
+    button { padding: clamp(7px,2vw,11px) clamp(10px,2.5vw,18px); font-size: clamp(0.82em,2.3vw,0.95em); cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #f5f5f5; }
+    button:hover { background: #e0e0e0; }
+    .btn-pdf { background: #1565c0; color: white; border-color: #1565c0; }
+    .btn-pdf:hover { background: #0d47a1; }
+
+    /* --- Seed display --- */
+    #seed-display { text-align: center; margin: 6px 0 14px; }
+    #seed-display .seed-label { font-size: 0.85em; color: #888; }
+    #seed-display .seed-val { font-size: 1.5em; font-weight: bold; letter-spacing: 4px; color: #1565c0; cursor: pointer; }
+    #seed-display .seed-val:hover { text-decoration: underline; }
+    #seed-copied { font-size: 0.8em; color: green; min-height: 1em; }
+    #round-indicator { text-align: center; font-weight: bold; color: #555; font-size: 1.05em; margin-bottom: 10px; }
+
+    /* --- Game controls --- */
+    .game-controls { display: flex; align-items: flex-start; gap: 36px; margin: 16px 0 20px; flex-wrap: wrap; }
+    .dice-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .dice { width: clamp(58px,11vw,84px); height: clamp(58px,11vw,84px); background: white; border: 4px solid #333; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: clamp(1.5em,3.8vw,2.4em); font-weight: bold; cursor: pointer; user-select: none; box-shadow: 4px 4px 0 #999; }
+    .dice:active { transform: scale(0.93); }
+    .dice.rolling { animation: roll 0.5s ease; }
+    @keyframes roll { 0%{transform:rotate(0deg) scale(1)} 25%{transform:rotate(-15deg) scale(1.1)} 50%{transform:rotate(15deg) scale(0.95)} 75%{transform:rotate(-8deg) scale(1.05)} 100%{transform:rotate(0deg) scale(1)} }
+    .dice-label { font-size: 0.82em; color: #777; }
+    .timer-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .timer-display { font-size: clamp(1.7em,5.5vw,2.8em); font-weight: bold; font-variant-numeric: tabular-nums; min-width: 96px; text-align: center; color: #222; }
+    .timer-display.warning { color: #e53935; }
+    .timer-buttons { display: flex; gap: 8px; }
+    .timer-label { font-size: 0.82em; color: #777; }
+
+    /* --- Questions --- */
+    #questions { margin-bottom: 8px; }
+    #questions p { font-size: clamp(1em,3.3vw,1.35em); margin: 5px 0; }
+
+    /* --- Answer rows --- */
+    .answer-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .q-num { font-weight: bold; min-width: 26px; color: #555; font-size: 0.95em; }
+    .answer-input { flex: 1; padding: 7px 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 6px; }
+    .score-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #ccc; background: white; font-size: 1.05em; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; }
+    .score-btn.scored { background: #4caf50; border-color: #4caf50; color: white; }
+    .round-total { text-align: right; font-weight: bold; font-size: 1.05em; color: #1565c0; margin: 8px 0 0; }
+
+    /* --- Scoreboard --- */
+    #scoreboard { margin-top: 20px; background: #f4f8ff; border-radius: 10px; padding: 14px 16px; display: none; }
+    #scoreboard h3 { margin: 0 0 10px; font-size: 1em; }
+    #scoreboard table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+    #scoreboard th, #scoreboard td { padding: 5px 8px; text-align: center; border-bottom: 1px solid #dde; }
+    #scoreboard th { background: #dde8f8; }
+    #scoreboard td:first-child { text-align: left; }
+
+    /* --- NSFW toggle --- */
+    #nsfw-wrap { text-align: center; margin: 2px 0 8px; }
+    #nsfw-wrap label { font-size: 0.85em; color: #aaa; cursor: pointer; }
+
+    footer { margin-top: 44px; padding-top: 12px; border-top: 1px solid #eee; font-size: 0.76em; color: #bbb; text-align: center; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<!-- Setup overlay -->
+<div id="overlay">
+  <div class="setup-box">
+    <h2>🎲 Category Blitz</h2>
+    <p class="tagline">Personal Scorecard</p>
+
+    <label>Your name:</label>
+    <input id="player-name" type="text" placeholder="Enter your name" />
+
+    <label>Number of rounds:</label>
+    <select id="num-rounds-select">
+      <option value="1">1</option><option value="2">2</option>
+      <option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
+    </select>
+
+    <div class="divider">Game Seed</div>
+    <p style="font-size:0.85em;color:#888;margin:0 0 8px;">Share this code with other players so everyone gets the same questions.</p>
+    <div class="seed-row">
+      <input id="seed-input" type="text" placeholder="e.g. AB3X7" maxlength="6" oninput="this.value=this.value.toUpperCase()" />
+      <button onclick="generateSeed()">🎲 Random</button>
+    </div>
+
+    <div class="mode-buttons">
+      <button class="mode-btn btn-family" onclick="startGame(false)">👨‍👩‍👧 Family</button>
+      <button class="mode-btn btn-adult" onclick="startGame(true)">🔞 Adult</button>
+    </div>
+  </div>
+</div>
+
+<h1>🎲 Category Blitz</h1>
+<p class="subtitle">Personal Scorecard &nbsp;|&nbsp; Unofficial fan game</p>
+
+<div id="nsfw-wrap"><label><input type="checkbox" id="nsfw-check" onchange="toggleNsfw()"> Adult questions</label></div>
+
+<div id="seed-display">
+  <div class="seed-label">Game seed — share with other players:</div>
+  <div class="seed-val" id="seed-val" onclick="copySeed()" title="Click to copy">——</div>
+  <div id="seed-copied"></div>
+</div>
+
+<div id="round-indicator"></div>
+
+<div class="toolbar">
+  <button onclick="nextRound()">⏭ Next Round</button>
+  <button onclick="restartGame()">🔄 Restart</button>
+  <button class="btn-pdf" onclick="downloadPDF()">📄 My Scorecard PDF</button>
+</div>
+
+<div class="game-controls">
+  <div class="dice-wrap">
+    <div class="dice" id="dice" onclick="rollDice()">?</div>
+    <span class="dice-label">Letter die</span>
+    <div class="dice" id="num-dice" onclick="rollNumDice()" style="margin-top:8px;font-size:2.8em;">&#x2680;</div>
+    <span class="dice-label">Number die</span>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-display" id="timer">3:00</div>
+    <div class="timer-buttons">
+      <button onclick="startTimer()">▶ Start</button>
+      <button onclick="resetTimer()">↺ Reset</button>
+    </div>
+    <span class="timer-label">3 minute timer</span>
+  </div>
+</div>
+
+<div id="questions"></div>
+<div id="answers"></div>
+<div class="round-total" id="round-total"></div>
+<div id="scoreboard"></div>
+
+<footer>
+  Unofficial fan game not affiliated with or endorsed by Hasbro.<br>
+  Category Blitz &copy; 2025 – Free to play, not for commercial use.
+</footer>
+
+<script>
+const { jsPDF } = window.jspdf;
+const LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','R','S','T','W'];
+const NUM_FACES = ['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
+const QS_PER_ROUND = 12;
+
+let allQuestions = [];
+let playerName = 'Player';
+let totalRounds = 3;
+let currentRound = 0;
+let gameSeed = '';
+let nsfwEnabled = false;
+let gameHistory = []; // [{round, questions, answers:[], scores:[]}]
+let currentQuestions = [];
+let currentAnswers = [];
+let currentScores = [];
+
+// ── Seeded RNG (mulberry32) ──────────────────────────────────
+function hashSeed(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return h >>> 0;
+}
+function makeRng(seed) {
+  let s = hashSeed(seed);
+  return function() {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function seededShuffle(arr, rng) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Seed UI ──────────────────────────────────────────────────
+function generateSeed() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('seed-input').value = s;
+}
+generateSeed(); // auto-fill on load
+
+function copySeed() {
+  navigator.clipboard.writeText(gameSeed).then(() => {
+    document.getElementById('seed-copied').textContent = '✅ Copied!';
+    setTimeout(() => document.getElementById('seed-copied').textContent = '', 2000);
+  });
+}
+
+// ── Start game ───────────────────────────────────────────────
+function startGame(adult) {
+  nsfwEnabled = adult;
+  document.getElementById('nsfw-check').checked = adult;
+  playerName = document.getElementById('player-name').value.trim() || 'Player';
+  totalRounds = parseInt(document.getElementById('num-rounds-select').value);
+  gameSeed = document.getElementById('seed-input').value.trim().toUpperCase() || 'BLITZ';
+  currentRound = 0;
+  gameHistory = [];
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('seed-val').textContent = gameSeed;
+  if (allQuestions.length > 0) startRound();
+}
+
+function toggleNsfw() {
+  nsfwEnabled = document.getElementById('nsfw-check').checked;
+}
+
+function getFilteredQuestions() {
+  return nsfwEnabled ? allQuestions : allQuestions.filter(q => !q.includes('[nsfw]'));
+}
+function cleanQ(q) { return q.replace(' [nsfw]', ''); }
+
+// ── Rounds ───────────────────────────────────────────────────
+function getQuestionsForRound(roundNum) {
+  const pool = getFilteredQuestions().map(cleanQ);
+  // Each round gets a unique section of the seeded shuffle
+  const rng = makeRng(gameSeed + '-' + roundNum);
+  const shuffled = seededShuffle(pool, rng);
+  return shuffled.slice(0, QS_PER_ROUND);
+}
+
+function startRound() {
+  currentRound++;
+  resetTimer();
+  currentQuestions = getQuestionsForRound(currentRound);
+  currentAnswers = Array(QS_PER_ROUND).fill('');
+  currentScores = Array(QS_PER_ROUND).fill(0);
+  renderQuestions();
+  renderAnswers();
+  updateRoundIndicator();
+  document.getElementById('scoreboard').style.display = 'none';
+}
+
+function nextRound() {
+  saveRound();
+  if (currentRound >= totalRounds) {
+    showFinalScoreboard();
+    return;
+  }
+  startRound();
+}
+
+function saveRound() {
+  gameHistory.push({
+    round: currentRound,
+    questions: [...currentQuestions],
+    answers: [...currentAnswers],
+    scores: [...currentScores]
+  });
+}
+
+function restartGame() {
+  document.getElementById('overlay').classList.remove('hidden');
+  generateSeed();
+}
+
+function updateRoundIndicator() {
+  document.getElementById('round-indicator').textContent = `Round ${currentRound} of ${totalRounds}`;
+}
+
+// ── Questions & Answers ──────────────────────────────────────
+function renderQuestions() {
+  document.getElementById('questions').innerHTML =
+    currentQuestions.map((q, i) => `<p>${i + 1}. ${q}</p>`).join('');
+}
+
+function renderAnswers() {
+  let html = '';
+  currentQuestions.forEach((q, i) => {
+    html += `<div class="answer-row">
+      <span class="q-num">${i + 1}.</span>
+      <input class="answer-input" type="text" placeholder="${q}" value="${currentAnswers[i]||''}"
+        oninput="currentAnswers[${i}]=this.value">
+      <button class="score-btn ${currentScores[i]?'scored':''}" id="sb-${i}" onclick="toggleScore(${i})">✓</button>
+    </div>`;
+  });
+  document.getElementById('answers').innerHTML = html;
+  updateRoundTotal();
+}
+
+function toggleScore(i) {
+  currentScores[i] = currentScores[i] ? 0 : 1;
+  document.getElementById(`sb-${i}`).classList.toggle('scored', !!currentScores[i]);
+  updateRoundTotal();
+}
+
+function updateRoundTotal() {
+  const t = currentScores.reduce((a, b) => a + b, 0);
+  document.getElementById('round-total').textContent = `Round score: ${t} point${t !== 1 ? 's' : ''}`;
+}
+
+// ── Scoreboard ───────────────────────────────────────────────
+function showFinalScoreboard() {
+  saveRound();
+  const sb = document.getElementById('scoreboard');
+  sb.style.display = 'block';
+  let total = 0;
+  let html = `<h3>📊 ${playerName}'s Scorecard — Seed: ${gameSeed}</h3>
+    <table><tr><th>Round</th><th>Score</th></tr>`;
+  gameHistory.forEach(r => {
+    const s = r.scores.reduce((a, b) => a + b, 0);
+    total += s;
+    html += `<tr><td>Round ${r.round}</td><td>${s}</td></tr>`;
+  });
+  html += `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td></tr></table>`;
+  sb.innerHTML = html;
+  sb.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Dice ─────────────────────────────────────────────────────
+function rollDice() {
+  const d = document.getElementById('dice');
+  d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
+  let f = 0;
+  const t = setInterval(() => {
+    d.textContent = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+    if (++f >= 10) { clearInterval(t); d.textContent = LETTERS[Math.floor(Math.random() * LETTERS.length)]; }
+  }, 50);
+  setTimeout(() => d.classList.remove('rolling'), 500);
+}
+function rollNumDice() {
+  const d = document.getElementById('num-dice');
+  d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
+  let f = 0;
+  const t = setInterval(() => {
+    d.innerHTML = NUM_FACES[Math.floor(Math.random() * 6)];
+    if (++f >= 10) { clearInterval(t); d.innerHTML = NUM_FACES[Math.floor(Math.random() * 6)]; }
+  }, 50);
+  setTimeout(() => d.classList.remove('rolling'), 500);
+}
+
+// ── Timer ────────────────────────────────────────────────────
+const TIMER_SECONDS = 180;
+let timerRemaining = TIMER_SECONDS, timerInterval = null, timerRunning = false;
+function formatTime(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; }
+function updateTimerDisplay() {
+  const el = document.getElementById('timer');
+  el.textContent = formatTime(timerRemaining);
+  el.classList.toggle('warning', timerRemaining <= 30);
+}
+function startTimer() {
+  if (timerRunning) return;
+  if (timerRemaining === 0) timerRemaining = TIMER_SECONDS;
+  timerRunning = true;
+  timerInterval = setInterval(() => {
+    timerRemaining--;
+    updateTimerDisplay();
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval); timerRunning = false;
+      document.getElementById('timer').textContent = '⏰ Time!';
+      document.getElementById('timer').classList.remove('warning');
+    }
+  }, 1000);
+}
+function resetTimer() {
+  clearInterval(timerInterval); timerRunning = false;
+  timerRemaining = TIMER_SECONDS; updateTimerDisplay();
+  document.getElementById('timer').classList.remove('warning');
+}
+
+// ── Load questions ───────────────────────────────────────────
+fetch('questions.txt')
+  .then(r => { if (!r.ok) throw new Error('questions.txt not found'); return r.text(); })
+  .then(txt => {
+    allQuestions = txt.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+  })
+  .catch(err => {
+    document.getElementById('questions').innerHTML = `<p style="color:red">${err.message}</p>`;
+  });
+
+// ── PDF ──────────────────────────────────────────────────────
+function downloadPDF() {
+  // Save current round if not already saved
+  const alreadySaved = gameHistory.some(r => r.round === currentRound);
+  if (!alreadySaved) saveRound();
+
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 50;
+  let y = margin;
+
+  function checkPage(needed = 20) {
+    if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
+  }
+
+  // Header
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+  doc.text('Category Blitz – Personal Scorecard', pageW / 2, y, { align: 'center' }); y += 14;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(150);
+  doc.text(`Player: ${playerName}   |   Seed: ${gameSeed}   |   ${new Date().toLocaleDateString()}`, pageW / 2, y, { align: 'center' });
+  doc.setTextColor(0); y += 26;
+
+  // Summary
+  const grandTotal = gameHistory.reduce((sum, r) => sum + r.scores.reduce((a, b) => a + b, 0), 0);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.text(`Total Score: ${grandTotal} point${grandTotal !== 1 ? 's' : ''}`, margin, y); y += 22;
+
+  // Rounds
+  gameHistory.forEach(round => {
+    checkPage(50);
+    const roundScore = round.scores.reduce((a, b) => a + b, 0);
+
+    // Round header bar
+    doc.setFillColor(20, 80, 160); doc.setTextColor(255);
+    doc.rect(margin, y - 13, pageW - margin * 2, 18, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+    doc.text(`Round ${round.round}  —  Score: ${roundScore}`, margin + 8, y);
+    doc.setTextColor(0); y += 22;
+
+    round.questions.forEach((q, qi) => {
+      checkPage(28);
+      const ans = round.answers[qi] || '';
+      const scored = round.scores[qi];
+
+      // Question
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+      doc.setTextColor(80);
+      const qText = doc.splitTextToSize(`${qi + 1}. ${q}`, pageW - margin * 2 - 20);
+      doc.text(qText, margin + 4, y); y += qText.length * 12;
+      doc.setTextColor(0);
+
+      // Answer
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+      if (scored) {
+        doc.setTextColor(30, 130, 30);
+        doc.text(`   ✓  ${ans || '—'}`, margin + 10, y);
+      } else {
+        doc.setTextColor(120);
+        doc.text(`      ${ans || '—'}`, margin + 10, y);
+      }
+      doc.setTextColor(0); y += 16;
+    });
+    y += 10;
+  });
+
+  doc.save(`category-blitz-${playerName}-${gameSeed}.pdf`);
+}
+</script>
+</body>
+</html>
