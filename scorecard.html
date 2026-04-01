@@ -59,15 +59,16 @@
     .timer-label { font-size: 0.82em; color: #777; }
 
     /* --- Questions --- */
-    #questions { margin-bottom: 8px; }
-    #questions p { font-size: clamp(1em,3.3vw,1.35em); margin: 5px 0; }
+    #questions { display: none; }
 
     /* --- Answer rows --- */
-    .answer-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-    .q-num { font-weight: bold; min-width: 26px; color: #555; font-size: 0.95em; }
+    .question-block { margin-bottom: 14px; }
+    .question-label { font-size: clamp(1em,3.3vw,1.3em); font-weight: bold; margin: 0 0 5px; color: #222; }
+    .answer-row { display: flex; align-items: center; gap: 10px; }
     .answer-input { flex: 1; padding: 7px 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 6px; }
-    .score-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #ccc; background: white; font-size: 1.05em; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; }
-    .score-btn.scored { background: #4caf50; border-color: #4caf50; color: white; }
+    .slider-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .slider-wrap input[type=range] { width: 80px; accent-color: #1565c0; cursor: pointer; }
+    .slider-val { font-size: 1em; font-weight: bold; min-width: 18px; text-align: center; color: #1565c0; }
     .round-total { text-align: right; font-weight: bold; font-size: 1.05em; color: #1565c0; margin: 8px 0 0; }
 
     /* --- Scoreboard --- */
@@ -294,27 +295,35 @@ function updateRoundIndicator() {
 
 // ── Questions & Answers ──────────────────────────────────────
 function renderQuestions() {
-  document.getElementById('questions').innerHTML =
-    currentQuestions.map((q, i) => `<p>${i + 1}. ${q}</p>`).join('');
+  // questions are rendered inline with answers
 }
 
 function renderAnswers() {
   let html = '';
   currentQuestions.forEach((q, i) => {
-    html += `<div class="answer-row">
-      <span class="q-num">${i + 1}.</span>
-      <input class="answer-input" type="text" placeholder="${q}" value="${currentAnswers[i]||''}"
-        oninput="currentAnswers[${i}]=this.value">
-      <button class="score-btn ${currentScores[i]?'scored':''}" id="sb-${i}" onclick="toggleScore(${i})">✓</button>
+    const score = currentScores[i] || 0;
+    html += `<div class="question-block">
+      <div class="question-label">${i + 1}. ${q}</div>
+      <div class="answer-row">
+        <input class="answer-input" type="text" placeholder="Your answer..." value="${currentAnswers[i]||''}"
+          oninput="currentAnswers[${i}]=this.value">
+        <div class="slider-wrap">
+          <input type="range" min="0" max="3" value="${score}" id="slider-${i}"
+            oninput="setScore(${i}, parseInt(this.value))">
+          <span class="slider-val" id="sv-${i}">${score}</span>
+        </div>
+      </div>
     </div>`;
   });
   document.getElementById('answers').innerHTML = html;
   updateRoundTotal();
 }
 
-function toggleScore(i) {
-  currentScores[i] = currentScores[i] ? 0 : 1;
-  document.getElementById(`sb-${i}`).classList.toggle('scored', !!currentScores[i]);
+function setScore(i, val) {
+  currentScores[i] = val;
+  document.getElementById(`sv-${i}`).textContent = val;
+  const sv = document.getElementById(`sv-${i}`);
+  sv.style.color = val === 0 ? '#aaa' : val === 3 ? '#e53935' : '#1565c0';
   updateRoundTotal();
 }
 
@@ -456,12 +465,13 @@ function downloadPDF() {
 
       // Answer
       doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
-      if (scored) {
+      const scoreLabel = scored > 0 ? `[${scored}pt${scored>1?'s':''}]` : '';
+      if (scored > 0) {
         doc.setTextColor(30, 130, 30);
-        doc.text(`   ✓  ${ans || '—'}`, margin + 10, y);
+        doc.text(`   ${scoreLabel}  ${ans || '—'}`, margin + 10, y);
       } else {
         doc.setTextColor(120);
-        doc.text(`      ${ans || '—'}`, margin + 10, y);
+        doc.text(`   —  ${ans || '—'}`, margin + 10, y);
       }
       doc.setTextColor(0); y += 16;
     });
@@ -473,3 +483,4 @@ function downloadPDF() {
 </script>
 </body>
 </html>
+
