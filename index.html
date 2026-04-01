@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scattergories Game v2</title>
+  <title>Scattergories Game</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
-    h1 { text-align: center; }
-    #questions p { font-size: 1.1em; margin: 6px 0; }
+    body { font-family: Arial, sans-serif; max-width: 750px; margin: 40px auto; padding: 0 20px; }
+    h1 { text-align: center; font-size: 2.2em; }
+    #questions p { font-size: 1.4em; margin: 8px 0; }
     #memes { margin-top: 20px; }
-    #memes div { margin-bottom: 20px; text-align: center; }
-    #memes img { width: 200px; border-radius: 8px; display: block; margin: 0 auto 6px; }
-    #memes p { font-size: 0.85em; color: #555; margin: 0; }
+    #memes .meme-item { margin-bottom: 28px; display: flex; flex-direction: column; align-items: flex-start; }
+    #memes .meme-item p.meme-num { font-size: 1.4em; font-weight: bold; margin: 0 0 6px 0; }
+    #memes img { width: 340px; border-radius: 10px; display: block; }
+    #memes p.meme-title { font-size: 1em; color: #555; margin: 6px 0 0 0; }
+    .fallback-q { font-size: 1.4em; color: #666; font-style: italic; margin: 4px 0; }
     .buttons { display: flex; gap: 12px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
-    button { padding: 10px 24px; font-size: 1em; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #f5f5f5; }
+    button { padding: 12px 28px; font-size: 1.1em; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #f5f5f5; }
     button:hover { background: #e0e0e0; }
-    #share-box { margin: 16px auto; max-width: 600px; display: none; }
-    #share-box input { width: 100%; padding: 8px; font-size: 0.9em; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
-    #copy-msg { text-align: center; color: green; font-size: 0.9em; min-height: 1.2em; }
-    .error { color: red; }
-    .fallback-q { color: #666; font-style: italic; }
+    #share-box { margin: 16px auto; max-width: 650px; display: none; }
+    #share-box input { width: 100%; padding: 10px; font-size: 1em; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
+    #copy-msg { text-align: center; color: green; font-size: 1em; min-height: 1.4em; margin-top: 6px; }
+    .error { color: red; font-size: 1.2em; }
   </style>
 </head>
 <body>
-  <h1>🎲 Scattergories</h1>
+  <h1>🎲 Scattergories meme version</h1>
   <div class="buttons">
     <button onclick="newRound()">🔀 New Round</button>
     <button onclick="shareRound()">🔗 Share This Round</button>
@@ -38,7 +39,6 @@
     let currentQuestions = [];
     let currentMemeUrls = [];
 
-    // --- Load questions.txt ---
     fetch('questions.txt')
       .then(r => {
         if (!r.ok) throw new Error('Could not load questions.txt');
@@ -46,7 +46,6 @@
       })
       .then(txt => {
         allQuestions = txt.split('\n').map(q => q.trim()).filter(q => q.length > 0);
-        // Check if URL has a shared round
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('round');
         if (encoded) {
@@ -60,7 +59,6 @@
           `<p class="error">Error loading questions: ${err.message}</p>`;
       });
 
-    // --- New round: pick 9 random questions + 3 unique memes ---
     function newRound() {
       currentMemeUrls = [];
       const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
@@ -71,16 +69,14 @@
       loadMemes();
     }
 
-    // --- Render questions ---
     function renderQuestions(questions) {
       document.getElementById('questions').innerHTML =
         questions.map((q, i) => `<p>${i + 1}. ${q}</p>`).join('');
     }
 
-    // --- Load 3 unique memes sequentially to ensure uniqueness ---
     function loadMemes() {
       const container = document.getElementById('memes');
-      container.innerHTML = '<p style="color:#aaa;text-align:center">Loading memes...</p>';
+      container.innerHTML = '<p style="color:#aaa;text-align:center;font-size:1.2em">Loading memes...</p>';
 
       const seen = new Set();
       const results = [];
@@ -99,77 +95,60 @@
             }
             fetchOne(remaining - 1);
           })
-          .catch(() => {
-            // meme failed, try next
-            fetchOne(remaining - 1);
-          });
+          .catch(() => fetchOne(remaining - 1));
       }
 
-      // Fetch up to 6 attempts to get 3 unique memes
       fetchOne(6);
     }
 
-    // --- Render memes, fallback to extra questions if unavailable ---
     function renderMemes(memes) {
       currentMemeUrls = memes.map(m => m.url);
       const container = document.getElementById('memes');
+      container.innerHTML = '';
 
-      if (memes.length === 0) {
-        // No memes at all — show 3 bonus questions
-        showFallbackQuestions(3);
-        return;
-      }
+      const total = 3;
+      let memeIndex = 0;
 
-      let html = '';
-      let fallbackCount = 3 - memes.length;
+      for (let i = 0; i < total; i++) {
+        const num = 10 + i;
+        const div = document.createElement('div');
+        div.className = 'meme-item';
 
-      memes.forEach(m => {
-        html += `<div>
-          <img src="${m.url}" onerror="this.parentElement.innerHTML=fallbackQuestion()" >
-          <p>${m.title}</p>
-        </div>`;
-      });
+        if (memeIndex < memes.length) {
+          const m = memes[memeIndex++];
+          div.innerHTML = `
+            <p class="meme-num">${num}. </p>
+            <img src="${m.url}" onerror="replaceMemeWithQuestion(this, ${num})">
+            <p class="meme-title">${m.title}</p>`;
+        } else {
+          div.innerHTML = fallbackQuestionHTML(num);
+        }
 
-      container.innerHTML = html;
-
-      if (fallbackCount > 0) {
-        showFallbackQuestions(fallbackCount);
+        container.appendChild(div);
       }
     }
 
-    // --- Fallback: pick extra questions not already shown ---
-    function fallbackQuestion() {
+    function replaceMemeWithQuestion(img, num) {
       const used = new Set(currentQuestions);
       const extras = allQuestions.filter(q => !used.has(q));
       const q = extras[Math.floor(Math.random() * extras.length)] || '(No extra question available)';
-      return `<p class="fallback-q">🎯 Bonus: ${q}</p>`;
+      img.parentElement.innerHTML = `<p class="meme-num">${num}.</p><p class="fallback-q">${q}</p>`;
     }
 
-    function showFallbackQuestions(count) {
+    function fallbackQuestionHTML(num) {
       const used = new Set(currentQuestions);
-      const extras = allQuestions.filter(q => !used.has(q)).sort(() => Math.random() - 0.5);
-      const chosen = extras.slice(0, count);
-      const container = document.getElementById('memes');
-      chosen.forEach(q => {
-        const div = document.createElement('div');
-        div.innerHTML = `<p class="fallback-q">🎯 Bonus: ${q}</p>`;
-        container.appendChild(div);
-      });
+      const extras = allQuestions.filter(q => !used.has(q));
+      const q = extras[Math.floor(Math.random() * extras.length)] || '(No extra question available)';
+      return `<p class="meme-num">${num}.</p><p class="fallback-q">🎯 ${q}</p>`;
     }
 
-    // --- Share: encode questions + meme URLs into URL ---
     function shareRound() {
-      const data = {
-        q: currentQuestions,
-        m: currentMemeUrls
-      };
+      const data = { q: currentQuestions, m: currentMemeUrls };
       const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
       const url = `${location.origin}${location.pathname}?round=${encoded}`;
       const box = document.getElementById('share-box');
       box.style.display = 'block';
       document.getElementById('share-url').value = url;
-
-      // Auto-copy
       navigator.clipboard.writeText(url).then(() => {
         document.getElementById('copy-msg').textContent = '✅ Link copied to clipboard!';
       }).catch(() => {
@@ -177,7 +156,6 @@
       });
     }
 
-    // --- Load a shared round from URL ---
     function loadFromUrl(encoded) {
       try {
         const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
@@ -186,20 +164,26 @@
         renderQuestions(currentQuestions);
         renderSharedMemes(currentMemeUrls);
       } catch (e) {
-        newRound(); // fallback if URL is malformed
+        newRound();
       }
     }
 
-    // --- Render memes from shared URLs ---
     function renderSharedMemes(urls) {
       const container = document.getElementById('memes');
-      if (!urls || urls.length === 0) {
-        showFallbackQuestions(3);
-        return;
+      container.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const num = 10 + i;
+        const div = document.createElement('div');
+        div.className = 'meme-item';
+        if (urls[i]) {
+          div.innerHTML = `
+            <p class="meme-num">${num}.</p>
+            <img src="${urls[i]}" onerror="replaceMemeWithQuestion(this, ${num})">`;
+        } else {
+          div.innerHTML = fallbackQuestionHTML(num);
+        }
+        container.appendChild(div);
       }
-      container.innerHTML = urls.map(url =>
-        `<div><img src="${url}" width="200" onerror="this.parentElement.innerHTML=fallbackQuestion()"></div>`
-      ).join('');
     }
   </script>
 </body>
