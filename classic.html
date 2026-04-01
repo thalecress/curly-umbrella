@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Category Blitz – Meme Edition</title>
+  <title>Category Blitz – Classic Edition</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 750px; margin: 40px auto; padding: 0 20px; }
     h1 { text-align: center; font-size: 2.2em; }
@@ -45,12 +45,6 @@
     #copy-msg { text-align: center; color: green; font-size: 1em; min-height: 1.4em; margin-top: 6px; }
 
     #questions p { font-size: 1.4em; margin: 8px 0; }
-    #memes { margin-top: 20px; }
-    #memes .meme-item { margin-bottom: 28px; display: flex; flex-direction: column; align-items: flex-start; }
-    #memes .meme-num { font-size: 1.4em; font-weight: bold; margin: 0 0 6px 0; }
-    #memes img { width: 340px; border-radius: 10px; display: block; }
-    #memes p.meme-title { font-size: 1em; color: #555; margin: 6px 0 0 0; }
-    .fallback-q { font-size: 1.4em; color: #666; font-style: italic; margin: 4px 0; }
     .error { color: red; font-size: 1.2em; }
 
     footer { margin-top: 60px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 0.8em; color: #999; text-align: center; line-height: 1.6; }
@@ -58,12 +52,12 @@
 </head>
 <body>
   <h1>🎲 Category Blitz</h1>
-  <p class="subtitle">Meme Edition &nbsp;|&nbsp; An unofficial fan game, not affiliated with Hasbro or any other publisher</p>
+  <p class="subtitle">Classic Edition &nbsp;|&nbsp; An unofficial fan game, not affiliated with Hasbro or any other publisher</p>
 
   <div class="toolbar">
     <button onclick="newRound()">🔀 New Round</button>
     <button onclick="shareRound()">🔗 Share This Round</button>
-    <button onclick="window.location.href='classic.html'">🎯 Classic Edition</button>
+    <button onclick="window.location.href='index.html'">😂 Meme Edition</button>
   </div>
 
   <div id="share-box">
@@ -89,11 +83,9 @@
   </div>
 
   <div id="questions"></div>
-  <div id="memes"></div>
 
   <footer>
     This is an unofficial fan game not affiliated with or endorsed by Hasbro or any other publisher.<br>
-    Memes sourced from Reddit via meme-api.com. All rights belong to their original creators.<br>
     Category Blitz &copy; 2025 – Free to play, not for commercial use.
   </footer>
 
@@ -101,7 +93,7 @@
     const LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','R','S','T','W'];
     const NUM_FACES = ['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
 
-    let allQuestions = [], currentQuestions = [], currentMemeUrls = [];
+    let allQuestions = [], currentQuestions = [];
 
     const TIMER_SECONDS = 180;
     let timerRemaining = TIMER_SECONDS, timerInterval = null, timerRunning = false;
@@ -166,62 +158,19 @@
       });
 
     function newRound() {
-      currentMemeUrls = []; resetTimer();
-      currentQuestions = [...allQuestions].sort(() => Math.random()-0.5).slice(0, 9);
+      resetTimer();
+      currentQuestions = [...allQuestions].sort(() => Math.random()-0.5).slice(0, 12);
       renderQuestions(currentQuestions);
       document.getElementById('share-box').style.display = 'none';
       document.getElementById('copy-msg').textContent = '';
-      loadMemes();
     }
 
     function renderQuestions(qs) {
       document.getElementById('questions').innerHTML = qs.map((q,i) => `<p>${i+1}. ${q}</p>`).join('');
     }
 
-    function loadMemes() {
-      document.getElementById('memes').innerHTML = '<p style="color:#aaa;text-align:center;font-size:1.2em">Loading memes...</p>';
-      const seen = new Set(), results = [];
-      function fetchOne(remaining) {
-        if (remaining === 0 || results.length === 3) { renderMemes(results); return; }
-        fetch('https://meme-api.com/gimme').then(r => r.json())
-          .then(m => {
-            if (m.url && !seen.has(m.url)) { seen.add(m.url); results.push({url: m.url, title: m.title}); }
-            fetchOne(remaining - 1);
-          }).catch(() => fetchOne(remaining - 1));
-      }
-      fetchOne(6);
-    }
-
-    function renderMemes(memes) {
-      currentMemeUrls = memes.map(m => m.url);
-      const container = document.getElementById('memes');
-      container.innerHTML = '';
-      for (let i = 0; i < 3; i++) {
-        const num = 10 + i, div = document.createElement('div');
-        div.className = 'meme-item';
-        if (i < memes.length) {
-          div.innerHTML = `<p class="meme-num">${num}.</p>
-            <img src="${memes[i].url}" onerror="replaceMemeWithQuestion(this, ${num})">
-            <p class="meme-title">${memes[i].title}</p>`;
-        } else { div.innerHTML = fallbackQuestionHTML(num); }
-        container.appendChild(div);
-      }
-    }
-
-    function replaceMemeWithQuestion(img, num) {
-      const used = new Set(currentQuestions);
-      const extras = allQuestions.filter(q => !used.has(q));
-      const q = extras[Math.floor(Math.random()*extras.length)] || '(No extra question)';
-      img.parentElement.innerHTML = `<p class="meme-num">${num}.</p><p class="fallback-q">🎯 ${q}</p>`;
-    }
-    function fallbackQuestionHTML(num) {
-      const used = new Set(currentQuestions);
-      const q = allQuestions.filter(q => !used.has(q)).sort(() => Math.random()-0.5)[0] || '(No extra question)';
-      return `<p class="meme-num">${num}.</p><p class="fallback-q">🎯 ${q}</p>`;
-    }
-
     function shareRound() {
-      const data = {q: currentQuestions, m: currentMemeUrls};
+      const data = {q: currentQuestions};
       const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
       const url = `${location.origin}${location.pathname}?round=${encoded}`;
       document.getElementById('share-box').style.display = 'block';
@@ -234,22 +183,9 @@
     function loadFromUrl(encoded) {
       try {
         const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-        currentQuestions = data.q || []; currentMemeUrls = data.m || [];
-        renderQuestions(currentQuestions); renderSharedMemes(currentMemeUrls);
+        currentQuestions = data.q || [];
+        renderQuestions(currentQuestions);
       } catch(e) { newRound(); }
-    }
-
-    function renderSharedMemes(urls) {
-      const container = document.getElementById('memes');
-      container.innerHTML = '';
-      for (let i = 0; i < 3; i++) {
-        const num = 10+i, div = document.createElement('div');
-        div.className = 'meme-item';
-        div.innerHTML = urls[i]
-          ? `<p class="meme-num">${num}.</p><img src="${urls[i]}" onerror="replaceMemeWithQuestion(this, ${num})">`
-          : fallbackQuestionHTML(num);
-        container.appendChild(div);
-      }
     }
   </script>
 </body>
