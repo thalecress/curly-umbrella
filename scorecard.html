@@ -3,7 +3,49 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Category Blitz – Scorecard</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+function viewReport() {
+  const alreadySaved = gameHistory.some(r => r.round === currentRound);
+  if (!alreadySaved && currentQuestions.length > 0) saveRound();
+
+  const modal = document.getElementById('report-modal');
+  modal.classList.remove('hidden');
+
+  // Meta
+  document.getElementById('report-meta').textContent = `Player: ${playerName}  |  Seed: ${gameSeed}  |  ${new Date().toLocaleDateString()}`;
+
+  // Summary table
+  const grandTotal = gameHistory.reduce((sum, r) => sum + r.scores.reduce((a,b)=>a+b,0), 0);
+  let sumHtml = `<table><tr><th>Round</th><th>Score</th></tr>`;
+  gameHistory.forEach(r => {
+    const s = r.scores.reduce((a,b)=>a+b,0);
+    sumHtml += `<tr><td>Round ${r.round}</td><td>${s}</td></tr>`;
+  });
+  sumHtml += `<tr><td><strong>Total</strong></td><td><strong>${grandTotal}</strong></td></tr></table>`;
+  document.getElementById('report-summary').innerHTML = sumHtml;
+
+  // Rounds detail
+  let roundsHtml = '';
+  gameHistory.forEach(r => {
+    const roundScore = r.scores.reduce((a,b)=>a+b,0);
+    roundsHtml += `<div class="report-round">
+      <div class="report-round-header"><span>Round ${r.round}</span><span>${roundScore} pts</span></div>`;
+    r.questions.forEach((q, qi) => {
+      const ans = r.answers[qi] || '—';
+      const pts = r.scores[qi] || 0;
+      roundsHtml += `<div class="report-q">
+        <div class="rq-label">${qi+1}. ${q}</div>
+        <div class="rq-answer ${pts>0?'has-score':''}">
+          <span>${ans}</span>
+          ${pts>0 ? `<span class="rq-pts">${pts} pt${pts>1?'s':''}</span>` : ''}
+        </div>
+      </div>`;
+    });
+    roundsHtml += `</div>`;
+  });
+  document.getElementById('report-rounds').innerHTML = roundsHtml;
+}
+</script>
   <style>
     *, *:before, *:after { box-sizing: border-box; }
     body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 4vw; }
@@ -84,6 +126,27 @@
     #nsfw-wrap label { font-size: 0.85em; color: #aaa; cursor: pointer; }
 
     footer { margin-top: 44px; padding-top: 12px; border-top: 1px solid #eee; font-size: 0.76em; color: #bbb; text-align: center; line-height: 1.6; }
+
+    /* --- Report modal --- */
+    #report-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+    #report-modal.hidden { display: none; }
+    .report-box { background: white; border-radius: 14px; padding: 28px 24px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
+    .report-box h2 { margin: 0 0 4px; font-size: 1.4em; }
+    .report-box .report-meta { font-size: 0.85em; color: #888; margin-bottom: 18px; }
+    .report-round { margin-bottom: 20px; }
+    .report-round-header { background: #1565c0; color: white; border-radius: 8px; padding: 7px 12px; font-weight: bold; font-size: 1em; display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .report-q { margin-bottom: 10px; }
+    .report-q .rq-label { font-size: 0.9em; font-weight: bold; color: #555; }
+    .report-q .rq-answer { font-size: 1em; color: #222; display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-radius: 6px; }
+    .report-q .rq-answer.has-score { background: #e8f5e9; }
+    .report-q .rq-answer .rq-pts { font-weight: bold; color: #2e7d32; font-size: 0.9em; white-space: nowrap; }
+    .report-summary { background: #f4f8ff; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; }
+    .report-summary table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+    .report-summary th, .report-summary td { padding: 5px 8px; border-bottom: 1px solid #dde; text-align: center; }
+    .report-summary th { background: #dde8f8; }
+    .report-summary td:first-child { text-align: left; }
+    .close-report { display: block; margin: 0 auto; padding: 10px 28px; font-size: 1em; border-radius: 8px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; }
+    .close-report:hover { background: #e0e0e0; }
   </style>
 </head>
 <body>
@@ -134,7 +197,8 @@
 <div class="toolbar">
   <button onclick="nextRound()">⏭ Next Round</button>
   <button onclick="restartGame()">🔄 Restart</button>
-  <button class="btn-pdf" onclick="downloadPDF()">📄 My Scorecard PDF</button>
+  <button onclick="viewReport()">📊 View Report</button>
+  <button class="btn-pdf" onclick="downloadPDF()">📄 Download PDF</button>
 </div>
 
 <div class="game-controls">
@@ -481,7 +545,60 @@ function downloadPDF() {
 
   doc.save(`category-blitz-${playerName}-${gameSeed}.pdf`);
 }
+
+function viewReport() {
+  const alreadySaved = gameHistory.some(r => r.round === currentRound);
+  if (!alreadySaved && currentQuestions.length > 0) saveRound();
+
+  const modal = document.getElementById('report-modal');
+  modal.classList.remove('hidden');
+
+  // Meta
+  document.getElementById('report-meta').textContent = `Player: ${playerName}  |  Seed: ${gameSeed}  |  ${new Date().toLocaleDateString()}`;
+
+  // Summary table
+  const grandTotal = gameHistory.reduce((sum, r) => sum + r.scores.reduce((a,b)=>a+b,0), 0);
+  let sumHtml = `<table><tr><th>Round</th><th>Score</th></tr>`;
+  gameHistory.forEach(r => {
+    const s = r.scores.reduce((a,b)=>a+b,0);
+    sumHtml += `<tr><td>Round ${r.round}</td><td>${s}</td></tr>`;
+  });
+  sumHtml += `<tr><td><strong>Total</strong></td><td><strong>${grandTotal}</strong></td></tr></table>`;
+  document.getElementById('report-summary').innerHTML = sumHtml;
+
+  // Rounds detail
+  let roundsHtml = '';
+  gameHistory.forEach(r => {
+    const roundScore = r.scores.reduce((a,b)=>a+b,0);
+    roundsHtml += `<div class="report-round">
+      <div class="report-round-header"><span>Round ${r.round}</span><span>${roundScore} pts</span></div>`;
+    r.questions.forEach((q, qi) => {
+      const ans = r.answers[qi] || '—';
+      const pts = r.scores[qi] || 0;
+      roundsHtml += `<div class="report-q">
+        <div class="rq-label">${qi+1}. ${q}</div>
+        <div class="rq-answer ${pts>0?'has-score':''}">
+          <span>${ans}</span>
+          ${pts>0 ? `<span class="rq-pts">${pts} pt${pts>1?'s':''}</span>` : ''}
+        </div>
+      </div>`;
+    });
+    roundsHtml += `</div>`;
+  });
+  document.getElementById('report-rounds').innerHTML = roundsHtml;
+}
 </script>
+
+<!-- Report modal -->
+<div id="report-modal" class="hidden">
+  <div class="report-box">
+    <h2>📊 Scorecard Report</h2>
+    <div class="report-meta" id="report-meta"></div>
+    <div class="report-summary" id="report-summary"></div>
+    <div id="report-rounds"></div>
+    <button class="close-report" onclick="document.getElementById('report-modal').classList.add('hidden')">✕ Close</button>
+  </div>
+</div>
 </body>
 </html>
 
